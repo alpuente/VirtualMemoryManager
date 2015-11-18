@@ -21,15 +21,17 @@ int *toB(int n) {
       if ( 31-i < 8) {
         bNum[index] = 1;
         index++;
+      }
     }
     else {
       if (31-i < 8) {
         bNum[index] = 0;
         index++;
-    }
+        }
     }
     i++;
   }
+  
   printf("\n");
   for (int j = 0; j < 8; j++) {
     printf("%d", bNum[j]);
@@ -66,15 +68,15 @@ int readFile(char *file) {
 int logicalToPhysical(int index, int *pageNums, int *offsets) {
     int frameNum = index;
     int offset = offsets[index];
-    int *frameB = malloc(sizeof(int)*16);
-    int *offsetB = malloc(sizeof(int)*16);
-    frameB = convertToBinary(frameNum);
-    offsetB = convertToBinary(offset);
-    for (int i = 7; i < 16; i++) {
+    int *frameB = malloc(sizeof(int)*8);
+    int *offsetB = malloc(sizeof(int)*8);
+    frameB = toB(frameNum);
+    offsetB = toB(offset);
+    for (int i = 0; i < 8; i++) {
         printf("%d", frameB[i]);
     }
     printf(" ");
-    for (int j = 7; j < 16; j++) {
+    for (int j = 0; j < 8; j++) {
         printf("%d", offsetB[j]);
     }   
     printf("\n");
@@ -91,12 +93,12 @@ int main (int argc, char **argv) {
     /*
     for (int i = 0; i < 7; i++) {
         printf("%d %d\n", pageNums[i], offsets[i]);
-    }
-     printf("first and second");
-    printf("%d %d\n", pageNums[0], offsets[0]);
+    }*/
+    printf("first and second\n");
+    printf(" %d %d\n", pageNums[0], offsets[0]);
     logicalToPhysical(0, pageNums, offsets);
-    printf("%d %d\n", pageNums[1], offsets[1]);
+    printf(" %d  %d\n", pageNums[1], offsets[1]);
     logicalToPhysical(1, pageNums, offsets);
-    */
+    
     return 0;
 }
