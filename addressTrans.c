@@ -7,55 +7,6 @@ int *pageNums;
 int *offsets;
 int *pageTable;
 
-/**
-* converts a 32 bit integer to a 32 bit binary number
-* returns the binary number as an integer array
-**/
-int *convertToBinary(int n) {
-    int i,k,index;
-    index = 0;
-    int *binaryNum = malloc(16*sizeof(int));
-    for (i = 30; i >= 1; i--) {
-        k = n >> i;
-        if (k & 1) {
-            if ((31-i) > 16) { 
-                binaryNum[index] = 1;
-                index ++; }
-        } else {
-            if ((31-i) > 16) {
-                binaryNum[index] = 0;
-                index++; } 
-        }
-    }
-
-    for (int j = 0; j < 16; j++) {
-        printf("%d", binaryNum[j]);
-    }
-    
-    printf("\n");
-
-    return binaryNum;
-}
-
-int toBinary(int n) {
-  int c, k;
-  n = 20; 
-  for (c = 31; c >= 0; c--)
-  {
-    k = n >> c;
- 
-    if (k & 1)
-      printf("1");
-    else
-      printf("0");
-  }
- 
-  printf("\n");
-
-    return 0;
-}
-
-
 int *toB(int n) {
   int c, k, i;
   int *bNum = malloc(8*sizeof(int));
