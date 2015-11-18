@@ -10,7 +10,6 @@ int *pageTable;
 int *toB(int n) {
   int c, k, i;
   int *bNum = malloc(8*sizeof(int));
-  n = 20;
   i = 0;
   int index = 0;
   for (c = 31; c >= 0; c--)
@@ -32,11 +31,11 @@ int *toB(int n) {
     i++;
   }
   
-  printf("\n");
+  /*printf("\n");
   for (int j = 0; j < 8; j++) {
     printf("%d", bNum[j]);
   }
-  printf("\n");
+  printf("\n");*/
 
     return bNum;
 }
@@ -66,21 +65,38 @@ int readFile(char *file) {
 
 
 int logicalToPhysical(int index, int *pageNums, int *offsets) {
-    int frameNum = index;
-    int offset = offsets[index];
+    double exp = 0; // keep track of the power we want to raise 2 to
     int *frameB = malloc(sizeof(int)*8);
     int *offsetB = malloc(sizeof(int)*8);
-    frameB = toB(frameNum);
-    offsetB = toB(offset);
-    for (int i = 0; i < 8; i++) {
-        printf("%d", frameB[i]);
+    frameB = toB(index);
+    offsetB = toB(offsets[index]);
+    
+    int physicalAddress = 0;
+    for (int k = 0; k < 8; k++) {
+        printf("%d", offsetB[k]);
     }
-    printf(" ");
-    for (int j = 0; j < 8; j++) {
-        printf("%d", offsetB[j]);
-    }   
     printf("\n");
-    return 0;
+    for (int p = 0; p < 8; p++) {
+        printf("%d", frameB[p]);
+    }
+    printf("\n");
+    for (int i = 7; i >= 0; i--) {
+        if (offsetB[i] == 1) {
+            printf("%f\n", pow(2,exp));
+            physicalAddress += (int) pow(2, exp);
+        }
+        exp++;
+    }
+    
+    for (int j = 7; j >= 0; j--) {
+        if (frameB[j] == 1) {
+            physicalAddress += (int) pow(2, exp);
+            printf("%f\n", pow(2,exp));
+        }
+        exp++;
+    }
+    printf("physical address %d\n", physicalAddress);
+    return physicalAddress;
 }
 
 
@@ -89,7 +105,6 @@ int main (int argc, char **argv) {
     pageNums = malloc(1000 * sizeof(int));
     offsets = malloc(1000 * sizeof(int));
     readFile("input.txt");
-    toB(20);
     /*
     for (int i = 0; i < 7; i++) {
         printf("%d %d\n", pageNums[i], offsets[i]);
