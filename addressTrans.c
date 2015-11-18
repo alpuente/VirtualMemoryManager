@@ -6,6 +6,12 @@
 int *pageNums; 
 int *offsets;
 int *pageTable;
+int *lAddresses;
+frame *frames;
+
+struct Frame{
+    char bytes[256];
+} frame;
 
 int *toB(int n) {
   int c, k, i;
@@ -57,32 +63,44 @@ int readFile(char *file) {
         int pageN = (atoi(line) >> (8*1)) & 0xff;
         offsets[index] = offset;
         pageNums[index] = pageN;
+        lAddresses[index] = atoi(line);
         printf("\n");
         index++;
     }
     return 0;
 }
 
+int getByte(int pageNum, int offset) {
+    FILE *fp = fopen("BACKING_STORE.bin", "rb");
+    fseek(fp, (pageNum*256), SEEK_SET);
+    char bytes[256];
+    fread(bytes, 1, 256, fp);
+    printf("byte: %d\n", (int) bytes[offset]);
+    fclose(fp);
+    return 0;
+}
 
-int logicalToPhysical(int index, int *pageNums, int *offsets) {
+
+int logicalToPhysical(int index) {
     double exp = 0; // keep track of the power we want to raise 2 to
     int *frameB = malloc(sizeof(int)*8);
     int *offsetB = malloc(sizeof(int)*8);
-    frameB = toB(index);
+    int pageNum = pageNums[index];
+    frameB = toB(pageTable[pageNum]);
     offsetB = toB(offsets[index]);
     
     int physicalAddress = 0;
-    for (int k = 0; k < 8; k++) {
+    /*for (int k = 0; k < 8; k++) {
         printf("%d", offsetB[k]);
     }
     printf("\n");
     for (int p = 0; p < 8; p++) {
         printf("%d", frameB[p]);
     }
-    printf("\n");
+    printf("\n");*/
     for (int i = 7; i >= 0; i--) {
         if (offsetB[i] == 1) {
-            printf("%f\n", pow(2,exp));
+            //printf("%f\n", pow(2,exp));
             physicalAddress += (int) pow(2, exp);
         }
         exp++;
@@ -91,19 +109,21 @@ int logicalToPhysical(int index, int *pageNums, int *offsets) {
     for (int j = 7; j >= 0; j--) {
         if (frameB[j] == 1) {
             physicalAddress += (int) pow(2, exp);
-            printf("%f\n", pow(2,exp));
+            //printf("%f\n", pow(2,exp));
         }
         exp++;
     }
-    printf("physical address %d\n", physicalAddress);
+    //printf("physical address %d\n", physicalAddress);
     return physicalAddress;
 }
 
 
 int main (int argc, char **argv) {
-    pageTable = malloc(256*sizeof(int));
+    int physicalAddress;
+    pageTable = malloc(256 * sizeof(int));
     pageNums = malloc(1000 * sizeof(int));
     offsets = malloc(1000 * sizeof(int));
+    lAddresses = malloc(256 * sizeof(int));
     readFile("input.txt");
     /*
     for (int i = 0; i < 7; i++) {
@@ -111,9 +131,31 @@ int main (int argc, char **argv) {
     }*/
     printf("first and second\n");
     printf(" %d %d\n", pageNums[0], offsets[0]);
-    logicalToPhysical(0, pageNums, offsets);
+    //logicalToPhysical(0);
     printf(" %d  %d\n", pageNums[1], offsets[1]);
-    logicalToPhysical(1, pageNums, offsets);
+    //logicalToPhysical(1);
     
+    for (int j = 0; j < 256; j++) {
+        pageTable[j] = -1;
+    }
+    
+    int frameNum = 0;
+    for (int i = 0; i < 1000; i++) {
+        int pageNum = pageNums[i];
+        int offset = offsets[i];
+        printf("pageNum %d offset %d\n", pageNum, offset);
+        if (pageTable[pageNum] == -1) {
+            pageTable[pageNum] = frameNum;
+            physicalAddress = logicalToPhysical(i);
+            getByte(pageNum, offset);
+            frameNum++;
+        } else {
+            printf("beeeeppp");
+            physicalAddress = logicalToPhysical(i);
+            getByte(pageNum, offset);
+        }
+        printf(" lAddress %d %d\n", lAddresses[i], physicalAddress);
+    }
+
     return 0;
 }
