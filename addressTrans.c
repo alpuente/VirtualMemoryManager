@@ -8,6 +8,7 @@ int *offsets;
 int *pageTable;
 int *lAddresses;
 char **frames;
+int **tlb;
 
 int *toB(int n) {
   int c, k, i;
@@ -32,12 +33,6 @@ int *toB(int n) {
     }
     i++;
   }
-  
-  /*printf("\n");
-  for (int j = 0; j < 8; j++) {
-    printf("%d", bNum[j]);
-  }
-  printf("\n");*/
 
     return bNum;
 }
@@ -73,7 +68,30 @@ char *getPage(int pageNum, int offset, char *bytes) {
     return bytes;
 }
 
+/*
+* returns frame number if page is in tlb and -1 if it isn't
+*/
+int checkTLB(int pageNum) { 
+    for (int i = 0; i < 16; i++) {
+        if (pageNum == tlb[i][0]) {
+            return tlb[i][1]; // return frame number if found
+        }
+    }
+    return -1;
+}
 
+/*
+* updates the TLB at the relevant index, keeping the TLB in FIFO order
+*/
+void updateTLB(int pageNum, int frameNum, int index) {
+    index = index % 16;
+    tlb[index][0] = pageNum;
+    tlb[index][1] = frameNum;
+}
+
+/*
+* returns the physical address when supplied the page's index in the original file
+*/
 int logicalToPhysical(int index) {
     double exp = 0; // keep track of the power we want to raise 2 to
     int *frameB = malloc(sizeof(int)*8);
@@ -105,11 +123,22 @@ int logicalToPhysical(int index) {
 
 int main (int argc, char **argv) {
     int physicalAddress, signedByte;
+    int tlbIndex = 0;
+    int pageTableHits = 0;
+    int tlbHits = 0;
+    int pageFaults = 0;
+    int totalAddresses = 0;
     pageTable = malloc(256 * sizeof(int));
     pageNums = malloc(1000 * sizeof(int));
     offsets = malloc(1000 * sizeof(int));
     lAddresses = malloc(256 * sizeof(int));
     frames = malloc(256 * sizeof(char*));
+    tlb = malloc(16 * sizeof(int*));
+
+    for (int l = 0; l < 16; l++) {
+        tlb[l] = malloc(2 * sizeof(int));
+    }
+
     readFile("input.txt");
     for (int k = 0; k < 256; k++) {
         frames[k] = malloc( sizeof(char) * 256);
@@ -123,23 +152,47 @@ int main (int argc, char **argv) {
     for (int i = 0; i < 1000; i++) {
         int pageNum = pageNums[i];
         int offset = offsets[i];
+
+        int tlbCheck = checkTLB(pageNum);
+        if (tlbCheck != -1) { // check if page is in tlb first
+            
+            physicalAddress = logicalToPhysical(i);
+            signedByte = (int) frames[tlbCheck][offset];
+            tlbHits++;
         
-        if (pageTable[pageNum] == -1) {
+        } else if (pageTable[pageNum] == -1) { // pageNumber hasn't been seen before
+            
             pageTable[pageNum] = frameNum;
             physicalAddress = logicalToPhysical(i);
             char *f = malloc(256 * sizeof(char));
             f = getPage(pageNum, offset, f);
             frames[frameNum] = f;
             signedByte = (int) frames[frameNum][offset];
+            updateTLB(pageNum, frameNum, tlbIndex);
+            tlbIndex++;
             frameNum++;
-        } else {
+            pageFaults++;
+
+        } else { // get the page from the pageTable
+
             physicalAddress = logicalToPhysical(i);
             int fNum  = pageTable[pageNum];
             signedByte = (int) frames[fNum][offset];
+            updateTLB(pageNum, fNum, tlbIndex);
+            tlbIndex++;
+            pageTableHits++;
+
         }
 
         printf("Virtual address: %d Physical address: %d Value: %d\n", lAddresses[i], physicalAddress, signedByte );
+        totalAddresses++;
     }
+
+    printf("Number of Translated Addresses = %d\n", totalAddresses);
+    printf("Page Faults = %d\n", pageFaults);
+    printf("Page Fault Rate = %.3f\n", (double) pageFaults / 1000 );
+    printf("TLB Hits = %d\n", tlbHits);
+    printf("TLB Hit Rate = %.3f\n", (double) tlbHits / 1000);
 
     return 0;
 }
