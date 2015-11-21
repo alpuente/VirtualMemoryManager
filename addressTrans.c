@@ -9,6 +9,7 @@ int *pageTable;
 int *lAddresses;
 char **frames;
 int **tlb;
+int *pageFrames;
 
 int *toB(int n) {
   int c, k, i;
@@ -43,6 +44,7 @@ int *toB(int n) {
 * binary numbers represented as integer arrays
 **/
 int readFile(char *file) {
+    printf("hereeere\n");
     FILE *fp;
     fp = fopen(file,"r");
     char *line = malloc(sizeof(int)*12);
@@ -93,7 +95,7 @@ void updateTLB(int pageNum, int frameNum, int index) {
 * returns the physical address when supplied the page's index in the original file
 */
 int logicalToPhysical(int index) {
-    double exp = 0; // keep track of the power we want to raise 2 to
+    double exp = 0; // keep track of the power we want to raiseiin 2 to
     int *frameB = malloc(sizeof(int)*8);
     int *offsetB = malloc(sizeof(int)*8);
     int pageNum = pageNums[index];
@@ -121,7 +123,107 @@ int logicalToPhysical(int index) {
 }
 
 
-int main (int argc, char **argv) {
+void initializeArrays(){
+    // same as original implementation
+    lAddresses = malloc( sizeof(int) * 1000);
+    pageNums = malloc( sizeof(int) * 1000);
+    offsets = malloc( sizeof(int) * 1000);
+
+    pageTable = malloc( sizeof(int) * 256);
+    int j; 
+    for (j = 0; j < 256; j++) {
+        pageTable[j] = -1;
+    }
+
+    tlb = malloc( sizeof(int*) * 16);
+    int i;
+    for (i = 0; i < 16; i++) {
+        tlb[i] = malloc( sizeof(int) * 2);
+        tlb[i][0] = -1;
+        tlb[i][1] = -1;
+    }
+
+    // frames and pageFrames are different than original implementation
+    frames = malloc( sizeof(char*) * 128);
+    int k;
+    for (k = 0; k < 128; k++) {
+        frames[k] = malloc(sizeof(char) * 256);
+    }
+    pageFrames = malloc( sizeof(int) * 128);
+    int l;
+    for (l = 0; l < 128; l++) {
+        pageFrames[l] = -1;
+    }
+}
+
+
+void modified(char *fName) {
+    int physicalAddress;
+    initializeArrays();
+
+    readFile(fName);
+
+    int pageTableHits = 0;
+    int tlbHits = 0;
+    int pageFaults = 0;
+    int totalAddresses = 0;
+ 
+    int i;
+    int frameNum = 0;
+    int tlbIndex = 0;
+    for (i = 0; i < 1000; i++) {
+        int pageNum = pageNums[i];
+        int offset = offsets[i];
+        int signedByte;
+        
+        frameNum = frameNum%128;
+        int tlbCheck = checkTLB(pageNum);
+        if (tlbCheck != -1) {
+            physicalAddress = logicalToPhysical(i);
+            signedByte = (int) frames[tlbCheck][offset];
+            tlbHits++;
+        } if (pageTable[pageNum] == -1) {
+            pageTable[pageNum] = frameNum;
+            physicalAddress = logicalToPhysical(i);
+            char *f = malloc(256 * sizeof(char));
+            f = getPage(pageNum, offset, f);
+            if ( pageFrames[frameNum] != -1) {
+                int oldPageNum = pageFrames[frameNum];
+                /*if (checkTLB(oldPageNum) != -1) {
+                    int tlbI = getTLBIndex(pageNum);
+                    patchTLBHole(tlbI);        
+                    printf("was in tlb\n");
+                }*/
+                pageTable[oldPageNum] = -1;
+            }
+            pageFrames[frameNum] = pageNum;
+            frames[frameNum] = f;
+            signedByte = (int) frames[frameNum][offset];
+            updateTLB(pageNum, frameNum, tlbIndex);
+            tlbIndex++;
+            frameNum++;
+            pageFaults++;
+        } else {
+            physicalAddress = logicalToPhysical(i);
+            int fNum = pageTable[pageNum];
+           signedByte = (int) frames[fNum][offset];
+           updateTLB(pageNum, frameNum, tlbIndex);
+           tlbIndex++;
+           pageTableHits++;
+        }
+
+        printf("Virtual address: %d Physical address: %d Value: %d\n", lAddresses[i], physicalAddress, signedByte );
+    }
+    printf("Number of Translated Addresses = %d\n", 1000);
+    printf("Page Faults = %d\n", pageFaults);
+    printf("Page Fault Rate = %.3f\n", (double) pageFaults / 1000 );
+    printf("TLB Hits = %d\n", tlbHits);
+    printf("TLB Hit Rate = %.3f\n", (double) tlbHits / 1000);
+
+}
+
+
+void sameSize(char *fName) {
     int physicalAddress, signedByte;
     int tlbIndex = 0;
     int pageTableHits = 0;
@@ -139,7 +241,6 @@ int main (int argc, char **argv) {
         tlb[l] = malloc(2 * sizeof(int));
     }
 
-    readFile("input.txt");
     for (int k = 0; k < 256; k++) {
         frames[k] = malloc( sizeof(char) * 256);
     }
@@ -147,6 +248,8 @@ int main (int argc, char **argv) {
     for (int j = 0; j < 256; j++) {
         pageTable[j] = -1;
     }
+
+    readFile(fName);
     
     int frameNum = 0;
     for (int i = 0; i < 1000; i++) {
@@ -193,6 +296,18 @@ int main (int argc, char **argv) {
     printf("Page Fault Rate = %.3f\n", (double) pageFaults / 1000 );
     printf("TLB Hits = %d\n", tlbHits);
     printf("TLB Hit Rate = %.3f\n", (double) tlbHits / 1000);
+}
+
+int main (int argc, char **argv) {
+    printf("%s %s %s \n", argv[0], argv[1], argv[2]);
+    printf("%d\n", argc);
+    if (argc != 3) {
+        printf("Please enter a filename followed by 0 or 1");
+    } else if (atoi(argv[2]) == 0) {
+        modified(argv[1]);
+    } else if (atoi(argv[2]) == 1) {
+        sameSize(argv[1]);
+    }
 
     return 0;
 }
